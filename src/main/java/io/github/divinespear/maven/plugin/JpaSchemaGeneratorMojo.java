@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -58,13 +58,15 @@ import org.apache.maven.project.MavenProject;
 import org.apache.maven.repository.RepositorySystem;
 import org.codehaus.plexus.util.StringUtils;
 import org.eclipse.persistence.config.PersistenceUnitProperties;
+import org.eclipse.persistence.internal.helper.DBPlatformHelper;
+import org.eclipse.persistence.logging.DefaultSessionLog;
 import org.hibernate.tool.hbm2ddl.SchemaExport;
 import org.springframework.orm.jpa.persistenceunit.DefaultPersistenceUnitManager;
 import org.springframework.orm.jpa.persistenceunit.SmartPersistenceUnitInfo;
 
 /**
  * Generate database schema or DDL scripts.
- * 
+ *
  * @author divinespear
  */
 @Mojo(name = "generate", defaultPhase = LifecyclePhase.PROCESS_CLASSES)
@@ -501,6 +503,13 @@ public class JpaSchemaGeneratorMojo
 
     private void generate() throws Exception {
         Map<String, Object> map = JpaSchemaGeneratorUtils.buildProperties(this);
+        // hack for MSSQL > 12 sequences
+        DBPlatformHelper.getDBPlatform("",new DefaultSessionLog());
+        Field field = DBPlatformHelper.class.getDeclaredField("_nameToVendorPlatform");
+        field.setAccessible(true); // Suppress Java language access checking
+        // Get value
+        List<String[]> fieldValue = (List<String[]>) field.get(null);
+        fieldValue.add(0, new String[] {"(?i)microsoft.*12.*","io.github.divinespear.maven.plugin.SQLServerPlatform12"});
         if (getVendor() == null) {
             // with persistence.xml
             Persistence.generateSchema(this.persistenceUnitName, map);
