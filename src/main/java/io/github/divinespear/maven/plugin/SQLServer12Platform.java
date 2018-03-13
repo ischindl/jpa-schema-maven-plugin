@@ -4,14 +4,14 @@ import java.lang.reflect.Field;
 
 import org.eclipse.persistence.platform.database.SQLServerPlatform;
 
-public class SQLServerPlatform12 extends SQLServerPlatform{
+public class SQLServer12Platform extends SQLServerPlatform{
 
     /**
      *
      */
     private static final long serialVersionUID = -7635406252241916687L;
 
-    public SQLServerPlatform12() {
+    public SQLServer12Platform() {
         super();
         Field field;
         try {

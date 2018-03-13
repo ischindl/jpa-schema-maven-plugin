@@ -27,12 +27,14 @@ import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.charset.Charset;
 import java.sql.DatabaseMetaData;
 import java.sql.Driver;
 import java.sql.DriverManager;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -41,6 +43,7 @@ import java.util.regex.Pattern;
 import javax.persistence.Persistence;
 import javax.persistence.spi.PersistenceProvider;
 
+import com.google.common.io.Files;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.artifact.resolver.ArtifactResolutionRequest;
@@ -83,6 +86,12 @@ public class JpaSchemaGeneratorMojo
 
     @Component
     private RepositorySystem repositorySystem;
+
+    /**
+     * filenames which contains tablenames excluded from sql generation
+     */
+    @Parameter
+    private List<String> excludes;
 
     /**
      * skip schema generation
@@ -379,6 +388,8 @@ public class JpaSchemaGeneratorMojo
 
     private static final Map<String, String> LINE_SEPARATOR_MAP = new HashMap<>();
 
+    private Set<String> excludeTableNames = new HashSet<>();
+
     static {
         LINE_SEPARATOR_MAP.put("CR", "\r");
         LINE_SEPARATOR_MAP.put("LF", "\n");
@@ -509,7 +520,7 @@ public class JpaSchemaGeneratorMojo
         field.setAccessible(true); // Suppress Java language access checking
         // Get value
         List<String[]> fieldValue = (List<String[]>) field.get(null);
-        fieldValue.add(0, new String[] {"(?i)microsoft.*12.*","io.github.divinespear.maven.plugin.SQLServerPlatform12"});
+        fieldValue.add(0, new String[] {"(?i)microsoft.*12.*","io.github.divinespear.maven.plugin.SQLServer12Platform"});
         if (getVendor() == null) {
             // with persistence.xml
             Persistence.generateSchema(this.persistenceUnitName, map);
@@ -594,6 +605,20 @@ public class JpaSchemaGeneratorMojo
                         if (StringUtils.isBlank(s)) {
                             continue;
                         }
+                        boolean exclude = false;
+                        for(String tbln: excludeTableNames) {
+                            // remove create table NAME or drop table NAME;
+                            if(s.contains(" "+tbln+" ") || s.contains(" "+tbln+";")) {
+                                exclude = true;
+                                break;
+                            }
+                            if(s.contains("\""+tbln+"\"")) {
+                                exclude = true;
+                                break;
+                            }
+                        }
+                        if(exclude)
+                            continue;
                         s = s.trim();
                         writer.print((this.isFormat() ? format(s) : s).replaceAll("\r\n", linesep));
                         writer.print(";");
@@ -719,6 +744,17 @@ public class JpaSchemaGeneratorMojo
         // generate schema
         Thread thread = Thread.currentThread();
         ClassLoader currentClassLoader = thread.getContextClassLoader();
+        //load excludes
+        if(excludes != null) {
+            for(String exf: excludes) {
+                try {
+                    excludeTableNames.addAll(Files.readLines(new File(exf), Charset.forName("UTF-8")));
+                } catch (Throwable e) {
+                    log.error(e);
+                }
+            }
+        }
+
         try {
             thread.setContextClassLoader(classLoader);
             this.generate();
