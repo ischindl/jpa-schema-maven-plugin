@@ -585,6 +585,10 @@ public class JpaSchemaGeneratorMojo
     private static final Pattern CREATE_DROP_PATTERN = Pattern.compile("((?:create|drop|alter)\\s+(?:table|view|sequence))",
                                                                        Pattern.CASE_INSENSITIVE);
 
+    /**
+     * special DS postprocessing function 
+     * remove definitions from old bank.xml system
+     */
     private void postProcess() throws IOException {
         final String linesep = this.getLineSeparator();
 
@@ -608,7 +612,18 @@ public class JpaSchemaGeneratorMojo
                         boolean exclude = false;
                         for(String tbln: excludeTableNames) {
                             // remove create table NAME or drop table NAME;
-                            if(s.contains(" "+tbln+" ") || s.contains(" "+tbln+";")) {
+                            tbln = tbln.trim();
+                            if(s.contains(" "+tbln+" ") || s.endsWith(" "+tbln)) {
+                                exclude = true;
+
+                                break;
+                            }
+                            if(s.contains("\""+tbln+"\"")) {
+                                exclude = true;
+                                break;
+                            }
+                            tbln = "SEQ_"+ tbln;
+                            if(s.contains(" "+tbln+" ") || s.endsWith(" "+tbln)) {
                                 exclude = true;
                                 break;
                             }
