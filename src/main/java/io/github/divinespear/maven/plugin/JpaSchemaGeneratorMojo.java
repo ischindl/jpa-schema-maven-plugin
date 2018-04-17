@@ -514,13 +514,6 @@ public class JpaSchemaGeneratorMojo
 
     private void generate() throws Exception {
         Map<String, Object> map = JpaSchemaGeneratorUtils.buildProperties(this);
-        // hack for MSSQL > 12 sequences
-        DBPlatformHelper.getDBPlatform("",new DefaultSessionLog());
-        Field field = DBPlatformHelper.class.getDeclaredField("_nameToVendorPlatform");
-        field.setAccessible(true); // Suppress Java language access checking
-        // Get value
-        List<String[]> fieldValue = (List<String[]>) field.get(null);
-        fieldValue.add(0, new String[] {"(?i)microsoft.*12.*","io.github.divinespear.maven.plugin.SQLServer12Platform"});
         if (getVendor() == null) {
             // with persistence.xml
             Persistence.generateSchema(this.persistenceUnitName, map);
@@ -586,7 +579,7 @@ public class JpaSchemaGeneratorMojo
                                                                        Pattern.CASE_INSENSITIVE);
 
     /**
-     * special DS postprocessing function 
+     * special DS postprocessing function
      * remove definitions from old bank.xml system
      */
     private void postProcess() throws IOException {
@@ -616,15 +609,6 @@ public class JpaSchemaGeneratorMojo
                             if(s.contains(" "+tbln+" ") || s.endsWith(" "+tbln)) {
                                 exclude = true;
 
-                                break;
-                            }
-                            if(s.contains("\""+tbln+"\"")) {
-                                exclude = true;
-                                break;
-                            }
-                            tbln = "SEQ_"+ tbln;
-                            if(s.contains(" "+tbln+" ") || s.endsWith(" "+tbln)) {
-                                exclude = true;
                                 break;
                             }
                             if(s.contains("\""+tbln+"\"")) {
