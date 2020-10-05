@@ -14,7 +14,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>io.github.divinespear</groupId>
 	<artifactId>jpa-schema-maven-plugin</artifactId>
-	<version>0.2.5.ds</version>
+	<version>0.2.6.ds</version>
 	<packaging>maven-plugin</packaging>
 
 	<parent>
@@ -361,4 +361,20 @@
 			</plugins>
 		</pluginManagement>
 	</build>
+  <profiles>
+    <profile>
+      <id>ds</id>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-deploy-plugin</artifactId>
+            <groupId>org.apache.maven.plugins</groupId>
+            <version>3.0.0-M1</version>
+            <configuration>
+            <altDeploymentRepository>tucniak::http://tucniak.int.dsnet:8081/nexus/content/repositories/thirdparty/</altDeploymentRepository></configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

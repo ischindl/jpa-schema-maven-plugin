@@ -587,7 +587,7 @@ public class JpaSchemaGeneratorMojo extends AbstractMojo {
 	}
 
 	// found alter|create|drop table|view|sequence old_table_name
-	private static final Pattern CREATE_DROP_PATTERN = Pattern.compile(	"((?:create|drop|alter)\\s+(?:table|view|sequence)\\s+(\\w+))",
+	private static final Pattern CREATE_DROP_PATTERN = Pattern.compile(	"((?:create|drop|alter)\\s+(?:table|view|sequence|index)\\s+(\\w+))",
 																		Pattern.CASE_INSENSITIVE);
 
 	// found alter table ..... references old_table_name
