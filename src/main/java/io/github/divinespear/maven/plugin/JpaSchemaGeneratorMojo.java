@@ -476,6 +476,41 @@ public class JpaSchemaGeneratorMojo extends AbstractMojo {
 		return packageToScan;
 	}
 
+	/**
+	 * possibility to disable DS postProcessing, default = true
+	 */
+	@Parameter
+	private boolean doPostProcessing = true;
+
+	public boolean getDoPostProcessing() {
+		return doPostProcessing;
+	}
+
+	/**
+	 * create drop alter regexp string for DS postProcessing
+	 * found alter|create|drop table|view|sequence old_table_name
+	 * default = "((?:create|drop|alter)\\s+(?:table|view|sequence|index)\\s+(\\w+))"
+	 */
+	@Parameter
+	private String createRegexp = "((?:create|drop|alter)\\s+(?:table|view|sequence|index)\\s+(\\w+))";
+
+	public String getCreateRegexp() {
+		return createRegexp;
+	}
+
+	/**
+	 * alter regexp string for DS postProcessing
+	 * found alter table ..... references old_table_name
+	 * default = "((?:alter)\\s+(?:table).*(?:references)\\s+(\\w+))"
+	 */
+	@Parameter
+	private String alterRegexp = "((?:alter)\\s+(?:table).*(?:references)\\s+(\\w+))";
+
+	public String getAlterRegexp() {
+		return alterRegexp;
+	}
+
+
 	private static final URL[] EMPTY_URLS = new URL[0];
 
 	private ClassLoader getProjectClassLoader() throws MojoExecutionException {
@@ -492,10 +527,9 @@ public class JpaSchemaGeneratorMojo extends AbstractMojo {
 			}
 
 			// dependency artifacts to url
-			ArtifactResolutionRequest sharedreq = new ArtifactResolutionRequest()	.setResolveRoot(true)
-																					.setResolveTransitively(true)
-																					.setLocalRepository(this.session.getLocalRepository())
-																					.setRemoteRepositories(this.project.getRemoteArtifactRepositories());
+			ArtifactResolutionRequest sharedreq = new ArtifactResolutionRequest().setResolveRoot(true)
+					.setResolveTransitively(true).setLocalRepository(this.session.getLocalRepository())
+					.setRemoteRepositories(this.project.getRemoteArtifactRepositories());
 
 			ArtifactRepository repository = this.session.getLocalRepository();
 			Set<Artifact> artifacts = this.project.getDependencyArtifacts();
@@ -586,19 +620,20 @@ public class JpaSchemaGeneratorMojo extends AbstractMojo {
 		}
 	}
 
-	// found alter|create|drop table|view|sequence old_table_name
-	private static final Pattern CREATE_DROP_PATTERN = Pattern.compile(	"((?:create|drop|alter)\\s+(?:table|view|sequence|index)\\s+(\\w+))",
-																		Pattern.CASE_INSENSITIVE);
-
-	// found alter table ..... references old_table_name
-	private static final Pattern ALTER_TABLE_PATTERN = Pattern.compile(	"((?:alter)\\s+(?:table).*(?:references)\\s+(\\w+))",
-																		Pattern.CASE_INSENSITIVE);
-
 	/**
-	 * special DS postprocessing function
-	 * remove definitions from old bank.xml system
+	 * special DS postprocessing function remove definitions from old bank.xml
+	 * system
+	 * @throws IOException if file error
 	 */
 	protected void postProcess() throws IOException {
+		// found alter|create|drop table|view|sequence old_table_name
+		final Pattern CREATE_DROP_PATTERN = Pattern
+				.compile(getCreateRegexp(), Pattern.CASE_INSENSITIVE);
+
+		// found alter table ..... references old_table_name
+		final Pattern ALTER_TABLE_PATTERN = Pattern
+				.compile(getAlterRegexp(), Pattern.CASE_INSENSITIVE);
+
 		final String linesep = this.getLineSeparator();
 
 		List<File> files = Arrays.asList(this.getCreateOutputFile(), this.getDropOutputFile());
@@ -676,7 +711,7 @@ public class JpaSchemaGeneratorMojo extends AbstractMojo {
 	String format(String s) {
 		final String linesep = this.getLineSeparator();
 
-		s = s	.replaceAll("^([^(]+\\()", "$1\r\n\t")
+		s = s.replaceAll("^([^(]+\\()", "$1\r\n\t")
 				.replaceAll("\\)[^()]*$", "\r\n$0")
 				.replaceAll("((?:[^(),\\s]+|\\S\\([^)]+\\)[^),]*),)\\s*", "$1\r\n\t");
 		StringBuilder builder = new StringBuilder();
@@ -727,9 +762,8 @@ public class JpaSchemaGeneratorMojo extends AbstractMojo {
 			builder.setLength(0);
 			builder.append(tmp.replaceAll("(?i)(asc|desc)\\s*(on)", "$2"));
 		} else if (PATTERN_ALTER_TABLE.matcher(s).find()) {
-			for (String it : s	.replaceAll("(?i)^(alter\\s+table\\s+\\S+)\\s*", "$1\r\n\t")
-								.replaceAll("(?i)\\)\\s*(references)", ")\r\n\t$1")
-								.split("\r\n")) {
+			for (String it : s.replaceAll("(?i)^(alter\\s+table\\s+\\S+)\\s*", "$1\r\n\t")
+					.replaceAll("(?i)\\)\\s*(references)", ")\r\n\t$1").split("\r\n")) {
 				if (builder.length() == 0) {
 					builder.append(it).append(linesep);
 				} else if (completed) {
@@ -779,7 +813,7 @@ public class JpaSchemaGeneratorMojo extends AbstractMojo {
 		// generate schema
 		Thread thread = Thread.currentThread();
 		ClassLoader currentClassLoader = thread.getContextClassLoader();
-		//load excludes
+		// load excludes
 		if (excludes != null) {
 			for (String exf : excludes) {
 				try {
@@ -800,10 +834,12 @@ public class JpaSchemaGeneratorMojo extends AbstractMojo {
 		}
 
 		// post-process
-		try {
-			this.postProcess();
-		} catch (IOException e) {
-			throw new MojoExecutionException("Error while post-processing script file", e);
+		if (getDoPostProcessing()) {
+			try {
+				this.postProcess();
+			} catch (IOException e) {
+				throw new MojoExecutionException("Error while post-processing script file", e);
+			}
 		}
 	}
 }
